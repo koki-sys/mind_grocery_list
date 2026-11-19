@@ -58,6 +58,14 @@ button.danger{border-color:#c0504d;color:#c0504d}
 .sub{color:var(--text);font-weight:600;text-align:right;margin:8px 2px;font-variant-numeric:tabular-nums}
 li .pr{color:var(--text);white-space:nowrap;font-variant-numeric:tabular-nums;min-width:4.5em;text-align:right}
 li.done .pr{text-decoration:line-through;opacity:.5}
+.rc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 14px 14px;margin:12px 0}
+.rc h3{font-size:1.05rem;color:var(--text);margin:12px 0 6px}
+.rc h4{font-size:.85rem;color:var(--sub);margin:12px 0 4px}
+.rc ul{border:0;border-radius:0;background:none;overflow:visible}
+.rc ul li{padding:4px 0;border-top:1px solid var(--line)}
+.rc ul li:first-child{border-top:0}
+.rc ol{margin:0;padding-left:1.6em}
+.rc ol li{padding:4px 0;line-height:1.6}
 </style>
 </head>
 <body>
@@ -83,6 +91,13 @@ li.done .pr{text-decoration:line-through;opacity:.5}
     <h2>買い物リスト <span class="prog" id="prog"></span></h2>
     <div id="total"></div>
     <div id="list"></div>
+    <div class="fixbar"><button type="button" id="toRecipe">作り方を見る</button></div>
+  </section>
+
+  <section id="view-recipe" hidden>
+    <div class="bar"><button type="button" id="backList">買い物リストに戻る</button></div>
+    <h2>作り方</h2>
+    <div id="recipes"></div>
   </section>
 </main>
 <script>
@@ -139,6 +154,50 @@ var RECIPES = [
   I("ごぼう",2,"本",V),I("にんじん",1,"本",V),I("ごま油",15,"ml",O,true),
   I("醤油",30,"ml",O,true),I("白ごま",10,"g",O,true)]}
 ];
+/* 作り方（手順）。RECIPESの各要素に steps として付与 */
+var STEPS = {
+ "r1":["鶏むね肉は皮を取り、厚い部分を開いて厚さを均一にし、フォークで数か所刺す",
+  "塩とオリーブオイルをすり込み、耐熱の保存袋に入れて空気を抜く",
+  "湯を沸かした鍋の火を止め、袋ごと入れてフタをし、40〜50分置く",
+  "火の通りを確認して取り出し、粗熱が取れてから切る。冷蔵で4〜5日保存可"],
+ "r2":["生姜は皮をむいて薄切りにする。サバは皮目に十字の切り込みを入れる",
+  "鍋に水200ml（分量外）と味噌を溶き、生姜を入れて火にかける",
+  "煮立ったらサバを皮目を上にして並べ、落しぶたをして弱火で10分煮る",
+  "煮汁をかけながらさらに5分煮て、照りが出たら火を止める。冷蔵で3〜4日保存可"],
+ "r3":["しめじとえのきは石づきを落としてほぐす。玉ねぎは薄切りにする",
+  "フライパンに玉ねぎ、きのこの順に広げ、上に鮭を並べる",
+  "水大さじ3（分量外）をふり、フタをして中火で蒸し焼きにする",
+  "鮭に火が通るまで8〜10分蒸したら火を止める。冷蔵で3日保存可"],
+ "r4":["玉ねぎは薄切り、ほうれん草は4cm幅に切る。ひよこ豆缶は汁気を切る",
+  "フライパンにオリーブオイルを熱し、玉ねぎをしんなりするまで炒める",
+  "ひよこ豆とトマト缶を加え、5分ほど煮詰める",
+  "カレー粉を加えて混ぜ、ほうれん草を加えてさっと火を通す。冷蔵で4日保存可"],
+ "r5":["にんじん、セロリ、玉ねぎは1cm角に切る。レンズ豆はさっと洗う",
+  "鍋に野菜、レンズ豆、トマト缶、水600ml（分量外）を入れて火にかける",
+  "沸騰したらアクを取り、コンソメを加えて弱火で20分煮る",
+  "レンズ豆がやわらかくなったら火を止める。冷蔵で4〜5日保存可（冷凍も可）"],
+ "r6":["厚揚げは熱湯をかけて油抜きし、食べやすい大きさに切る。小松菜は4cm幅に切る",
+  "鍋にだしと醤油を入れて火にかけ、厚揚げを加えて5分煮る",
+  "小松菜を加え、しんなりするまで2〜3分煮る",
+  "火を止めてそのまま冷まし、味を含ませる。冷蔵で3〜4日保存可"],
+ "r7":["ブロッコリーは小房に分け、塩ゆで（塩は分量外）して水気をよく切る",
+  "ツナ缶は油を軽く切る",
+  "ボウルでブロッコリーとツナをレモン汁で和える",
+  "冷蔵で3日保存可"],
+ "r8":["鶏むね肉は皮を取り、そぎ切りにする。キャベツはざく切り、にんにくは薄切りにする",
+  "フライパンにオリーブオイルとにんにくを入れて弱火で熱し、香りを出す",
+  "キャベツを広げ、上に鶏むね肉を並べてフタをし、中火で8〜10分蒸し焼きにする",
+  "鶏肉に火が通ったら全体を混ぜる。冷蔵で3〜4日保存可"],
+ "r9":["干し椎茸は水で戻して薄切りにする（戻し汁は取っておく）。にんじんは粗みじん切りにする。大豆水煮は汁気を切る",
+  "鍋に椎茸の戻し汁200ml（分量外の水で調整）、醤油、みりんを入れて火にかける",
+  "鶏ひき肉を加えてほぐしながら煮て、にんじん、椎茸、大豆を加える",
+  "落しぶたをして弱火で12〜15分煮て、煮汁が少なくなるまで煮詰める。冷蔵で4〜5日保存可（冷凍も可）"],
+ "r10":["ごぼうはささがきにして水にさらし、水気を切る。にんじんは細切りにする",
+  "フライパンにごま油を熱し、ごぼうとにんじんを中火で3〜4分炒める",
+  "醤油を加え、汁気がなくなるまで炒め煮にする",
+  "火を止めて白ごまをふる。冷蔵で4〜5日保存可"]
+};
+RECIPES.forEach(function(r){ r.steps = STEPS[r.id] || []; });
 var STAPLES = [
  {id:"s1",name:"オートミール",ingredients:[I("オートミール",1,"袋",G)]},
  {id:"s2",name:"玄米",ingredients:[I("玄米",1,"袋",G)]},
@@ -165,13 +224,15 @@ function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e
 /* 画面（保存しない。常に「選ぶ」から開始） */
 var view = "pick";
 function setView(v){
-  view = (v === "list") ? "list" : "pick";
+  view = (v === "list" || v === "recipe") ? v : "pick";
+  if(view === "recipe") renderRecipes();
   applyView();
   window.scrollTo(0,0);
 }
 function applyView(){
   document.getElementById("view-pick").hidden = (view !== "pick");
   document.getElementById("view-list").hidden = (view !== "list");
+  document.getElementById("view-recipe").hidden = (view !== "recipe");
 }
 
 /* ---------- 合算 ---------- */
@@ -234,7 +295,17 @@ function renderList(){
     '</ul><div class="sub">調味料を全部買うと約'+yen(sum(se))+'円</div>';
   el.innerHTML = html;
 }
-function render(){ renderPickers(); renderList(); }
+function renderRecipes(){
+  var el = document.getElementById("recipes");
+  var sel = RECIPES.filter(function(r){return state.menus.indexOf(r.id)>-1;});
+  if(!sel.length){ el.innerHTML = '<div class="empty">メニューを選ぶと作り方が表示されます</div>'; return; }
+  el.innerHTML = sel.map(function(r){
+    return '<div class="rc"><h3>'+esc(r.name)+'</h3><h4>材料</h4><ul>'+
+      guardIngredients(r.ingredients).map(function(i){return '<li>'+esc(i.name)+' '+esc(fmt(i.amount)+i.unit)+'</li>';}).join("")+
+      '</ul><h4>手順</h4><ol>'+r.steps.map(function(s){return '<li>'+esc(s)+'</li>';}).join("")+'</ol></div>';
+  }).join("");
+}
+function render(){ renderPickers(); renderList(); if(view === "recipe") renderRecipes(); }
 
 /* ---------- イベント ---------- */
 document.addEventListener("change",function(e){
@@ -257,6 +328,8 @@ document.getElementById("reset").addEventListener("click",function(){
 
 document.getElementById("confirm").addEventListener("click",function(){ setView("list"); });
 document.getElementById("back").addEventListener("click",function(){ setView("pick"); });
+document.getElementById("toRecipe").addEventListener("click",function(){ setView("recipe"); });
+document.getElementById("backList").addEventListener("click",function(){ setView("list"); });
 
 applyView();
 render();
