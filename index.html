@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>作り置き買い物リスト</title>
+<style>
+:root{
+  --bg:#f6f7f4;--card:#fff;--text:#1f2a24;--sub:#5f6b64;--line:#dfe4dc;
+  --accent:#2f7d4f;--accent-text:#fff;--sel:#e4f3ea;--warn:#8a5a00;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#121613;--card:#1c221e;--text:#e8eee9;--sub:#9aa79f;--line:#2e372f;
+  --accent:#4fb87c;--accent-text:#08140d;--sel:#1f3a2a;--warn:#e0b050}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.5 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(96px + env(safe-area-inset-bottom)) env(safe-area-inset-left)}
+[hidden]{display:none!important}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:10;display:flex;background:var(--card);
+  border-top:1px solid var(--line);padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.tabbar button{flex:1;min-height:56px;border:0;border-radius:0;background:transparent;color:var(--sub);
+  font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
+.tabbar button[aria-selected=true]{color:var(--accent);box-shadow:inset 0 3px 0 var(--accent)}
+.badge{display:inline-block;min-width:24px;padding:0 7px;border-radius:12px;background:var(--accent);
+  color:var(--accent-text);font-size:.8rem;line-height:24px;text-align:center;font-variant-numeric:tabular-nums}
+header,main{max-width:640px;margin:0 auto;padding:0 14px}
+h1{font-size:1.3rem;margin:18px 0 4px}
+.note{color:var(--sub);font-size:.85rem;margin:0 0 8px}
+.allergy{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--warn);
+  border-radius:8px;padding:8px 12px;font-size:.85rem;color:var(--warn);margin:8px 0}
+h2{font-size:1.1rem;margin:24px 0 8px}
+h3{font-size:.95rem;margin:16px 0 6px;color:var(--sub)}
+.grid{display:grid;gap:8px}
+label.card{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 14px;
+  background:var(--card);border:2px solid var(--line);border-radius:12px;cursor:pointer}
+label.card.on{background:var(--sel);border-color:var(--accent)}
+input[type=checkbox]{width:26px;height:26px;flex:none;accent-color:var(--accent);margin:0}
+.t{flex:1}.t small{display:block;color:var(--sub);font-size:.8rem}
+ul{list-style:none;margin:0;padding:0;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+li label{display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 14px;cursor:pointer;border-top:1px solid var(--line)}
+li:first-child label{border-top:0}
+li .amt{color:var(--sub);white-space:nowrap;font-variant-numeric:tabular-nums}
+li .nm{flex:1}
+li.done .nm,li.done .amt{text-decoration:line-through;opacity:.5}
+.src{display:block;font-size:.72rem;color:var(--sub)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+button{min-height:48px;padding:0 18px;border-radius:12px;border:1px solid var(--line);
+  background:var(--card);color:var(--text);font-size:1rem;cursor:pointer}
+button.danger{border-color:#c0504d;color:#c0504d}
+.empty{color:var(--sub);padding:16px;text-align:center}
+.prog{color:var(--sub);font-size:.85rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>🥗 作り置き買い物リスト</h1>
+  <p class="note">週1回のまとめ買い用（1メニュー＝約5食分）。MIND食ベース。</p>
+  <div class="allergy">アレルギー除外中：卵・そば・うなぎ（マヨネーズ等の卵加工品も除外）</div>
+</header>
+<main>
+  <section id="view-pick">
+    <h2>メニューを選ぶ</h2>
+    <div class="grid" id="menus"></div>
+
+    <h2>いつもの定番</h2>
+    <div class="grid" id="staples"></div>
+
+    <div class="bar"><button class="danger" id="reset">全部リセット</button></div>
+  </section>
+
+  <section id="view-list" hidden>
+    <h2>買い物リスト <span class="prog" id="prog"></span></h2>
+    <div id="list"></div>
+    <p class="note">価格は表示しません。調味料は家にある分を確認してください。</p>
+  </section>
+</main>
+<nav class="tabbar" role="tablist" aria-label="画面切り替え">
+  <button type="button" role="tab" id="tab-pick" data-view="pick" aria-selected="true">選ぶ</button>
+  <button type="button" role="tab" id="tab-list" data-view="list" aria-selected="false">買い物リスト <span class="badge" id="badge">0</span></button>
+</nav>
+<script>
+(function(){
+"use strict";
+
+/* ---------- アレルギーガード（二重防御の2層目） ---------- */
+var BLOCKED = ["卵","玉子","たまご","タマゴ","そば","ソバ","蕎麦","うなぎ","ウナギ","鰻","マヨネーズ","マヨ"];
+function isAllowed(name){
+  var n = String(name || "");
+  for(var i=0;i<BLOCKED.length;i++){ if(n.indexOf(BLOCKED[i]) !== -1) return false; }
+  return true;
+}
+function guardIngredients(list){ return list.filter(function(x){ return isAllowed(x.name); }); }
+
+/* ---------- データ（1層目：卵・そば・うなぎ無し） ---------- */
+var V="野菜・きのこ", M="肉・魚", B="豆・大豆製品", C="缶詰・乾物", G="穀物", O="その他";
+function I(name,amount,unit,category,isSeasoning){
+  return {name:name,amount:amount,unit:unit,category:category,isSeasoning:!!isSeasoning};
+}
+var RECIPES = [
+ {id:"r1",name:"サラダチキン",ingredients:[
+  I("鶏むね肉",600,"g",M),I("オリーブオイル",15,"ml",O,true),I("塩",6,"g",O,true)]},
+ {id:"r2",name:"サバの味噌煮",ingredients:[
+  I("サバ切り身",4,"枚",M),I("味噌",50,"g",O,true),I("生姜",1,"個",V)]},
+ {id:"r3",name:"鮭ときのこの蒸し物",ingredients:[
+  I("鮭切り身",4,"枚",M),I("しめじ",2,"パック",V),I("えのき",1,"袋",V),I("玉ねぎ",1,"個",V)]},
+ {id:"r4",name:"ひよこ豆とほうれん草のカレー炒め",ingredients:[
+  I("ひよこ豆缶",2,"缶",C),I("ほうれん草",1,"束",V),I("玉ねぎ",1,"個",V),
+  I("トマト缶",1,"缶",C),I("カレー粉",10,"g",O,true),I("オリーブオイル",15,"ml",O,true)]},
+ {id:"r5",name:"レンズ豆と野菜のスープ",ingredients:[
+  I("レンズ豆",150,"g",C),I("にんじん",1,"本",V),I("セロリ",1,"本",V),I("玉ねぎ",1,"個",V),
+  I("トマト缶",1,"缶",C),I("コンソメ",2,"個",O,true)]},
+ {id:"r6",name:"厚揚げと小松菜の煮びたし",ingredients:[
+  I("厚揚げ",2,"枚",B),I("小松菜",1,"束",V),I("だし",300,"ml",O,true),I("醤油",30,"ml",O,true)]},
+ {id:"r7",name:"ブロッコリーとツナのサラダ",ingredients:[
+  I("ブロッコリー",2,"個",V),I("ツナ缶",2,"缶",C),I("レモン汁",30,"ml",O,true)]},
+ {id:"r8",name:"鶏むねとキャベツのオリーブオイル蒸し",ingredients:[
+  I("鶏むね肉",500,"g",M),I("キャベツ",0.5,"個",V),I("にんにく",2,"個",V),I("オリーブオイル",30,"ml",O,true)]},
+ {id:"r9",name:"鶏そぼろと大豆の煮物",ingredients:[
+  I("鶏ひき肉",400,"g",M),I("大豆水煮",2,"パック",B),I("にんじん",1,"本",V),I("干し椎茸",6,"個",C),
+  I("醤油",45,"ml",O,true),I("みりん",45,"ml",O,true)]},
+ {id:"r10",name:"ごぼうとにんじんのきんぴら",ingredients:[
+  I("ごぼう",2,"本",V),I("にんじん",1,"本",V),I("ごま油",15,"ml",O,true),
+  I("醤油",30,"ml",O,true),I("白ごま",10,"g",O,true)]}
+];
+var STAPLES = [
+ {id:"s1",name:"オートミール",ingredients:[I("オートミール",1,"袋",G)]},
+ {id:"s2",name:"玄米",ingredients:[I("玄米",1,"袋",G)]},
+ {id:"s3",name:"冷凍ブルーベリー",ingredients:[I("冷凍ブルーベリー",1,"袋",O)]},
+ {id:"s4",name:"ミックスナッツ",ingredients:[I("ミックスナッツ",1,"袋",O)]},
+ {id:"s5",name:"豆乳",ingredients:[I("豆乳",1000,"ml",O)]}
+];
+var CATS = [V,M,B,C,G,O];
+var SEASON_LABEL = "調味料（家にあるかも）";
+
+/* ---------- 状態 ---------- */
+var KEY = "mealprep.v1";
+var state = {menus:[],staples:[],checked:{}};
+try{
+  var s = JSON.parse(localStorage.getItem(KEY) || "null");
+  if(s){
+    state.menus = (s.menus||[]).filter(function(id){return RECIPES.some(function(r){return r.id===id;});});
+    state.staples = (s.staples||[]).filter(function(id){return STAPLES.some(function(r){return r.id===id;});});
+    state.checked = s.checked || {};
+  }
+}catch(e){}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+/* 画面（前回の画面を別キーで保存。state の保存形式は変えない） */
+var VIEW_KEY = "mealprep.view";
+var view = "pick";
+try{ if(localStorage.getItem(VIEW_KEY) === "list") view = "list"; }catch(e){}
+function setView(v){
+  view = (v === "list") ? "list" : "pick";
+  try{ localStorage.setItem(VIEW_KEY, view); }catch(e){}
+  applyView();
+  window.scrollTo(0,0);
+}
+function applyView(){
+  document.getElementById("view-pick").hidden = (view !== "pick");
+  document.getElementById("view-list").hidden = (view !== "list");
+  document.getElementById("tab-pick").setAttribute("aria-selected", String(view === "pick"));
+  document.getElementById("tab-list").setAttribute("aria-selected", String(view === "list"));
+}
+
+/* ---------- 合算 ---------- */
+function build(){
+  var map = {}, order = [];
+  var sources = RECIPES.filter(function(r){return state.menus.indexOf(r.id)>-1;})
+    .concat(STAPLES.filter(function(r){return state.staples.indexOf(r.id)>-1;}));
+  sources.forEach(function(src){
+    guardIngredients(src.ingredients).forEach(function(ing){   // 必ずガードを通す
+      var k = ing.name+"|"+ing.unit;
+      if(!map[k]){ map[k]={key:k,name:ing.name,unit:ing.unit,amount:0,category:ing.category,isSeasoning:ing.isSeasoning,from:[]}; order.push(k); }
+      map[k].amount += ing.amount;
+      if(map[k].from.indexOf(src.name)<0) map[k].from.push(src.name);
+    });
+  });
+  return guardIngredients(order.map(function(k){return map[k];}));  // 最終出力も再度ガード
+}
+function fmt(n){ return String(Math.round(n*100)/100); }
+
+/* ---------- 描画 ---------- */
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+
+function renderPickers(){
+  document.getElementById("menus").innerHTML = RECIPES.map(function(r){
+    var on = state.menus.indexOf(r.id)>-1;
+    return '<label class="card'+(on?' on':'')+'"><input type="checkbox" data-kind="menus" data-id="'+r.id+'"'+(on?' checked':'')+
+      '><span class="t">'+esc(r.name)+'<small>約5食分</small></span></label>';
+  }).join("");
+  document.getElementById("staples").innerHTML = STAPLES.map(function(r){
+    var on = state.staples.indexOf(r.id)>-1;
+    return '<label class="card'+(on?' on':'')+'"><input type="checkbox" data-kind="staples" data-id="'+r.id+'"'+(on?' checked':'')+
+      '><span class="t">'+esc(r.name)+'</span></label>';
+  }).join("");
+}
+function itemHtml(it){
+  var c = !!state.checked[it.key];
+  return '<li class="'+(c?'done':'')+'"><label><input type="checkbox" data-key="'+esc(it.key)+'"'+(c?' checked':'')+
+    '><span class="nm">'+esc(it.name)+'<span class="src">'+esc(it.from.join("・"))+'</span></span><span class="amt">'+
+    fmt(it.amount)+esc(it.unit)+'</span></label></li>';
+}
+function renderList(){
+  var items = build(), el = document.getElementById("list");
+  var prog = document.getElementById("prog");
+  document.getElementById("badge").textContent = items.length;
+  if(!items.length){ el.innerHTML='<div class="empty">メニューか定番を選ぶとここに表示されます</div>'; prog.textContent=""; return; }
+  var done = items.filter(function(i){return state.checked[i.key];}).length;
+  prog.textContent = done+" / "+items.length;
+  var html = "";
+  CATS.forEach(function(cat){
+    var g = items.filter(function(i){return !i.isSeasoning && i.category===cat;});
+    if(g.length) html += "<h3>"+esc(cat)+"</h3><ul>"+g.map(itemHtml).join("")+"</ul>";
+  });
+  var se = items.filter(function(i){return i.isSeasoning;});
+  if(se.length) html += "<h3>"+SEASON_LABEL+"</h3><ul>"+se.map(itemHtml).join("")+"</ul>";
+  el.innerHTML = html;
+}
+function render(){ renderPickers(); renderList(); }
+
+/* ---------- イベント ---------- */
+document.addEventListener("change",function(e){
+  var t = e.target;
+  if(t.dataset.kind){
+    var arr = state[t.dataset.kind], id = t.dataset.id, i = arr.indexOf(id);
+    if(t.checked && i<0) arr.push(id); else if(!t.checked && i>-1) arr.splice(i,1);
+    save(); render();
+    if(t.checked) setView("list");   // ONにしたときだけ買い物リストへ自動遷移
+  }else if(t.dataset.key){
+    if(t.checked) state.checked[t.dataset.key]=true; else delete state.checked[t.dataset.key];
+    save(); renderList();
+  }
+});
+document.getElementById("reset").addEventListener("click",function(){
+  if(!confirm("選択とチェックをすべてリセットしますか？")) return;
+  state = {menus:[],staples:[],checked:{}};
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  render();
+});
+
+document.querySelector(".tabbar").addEventListener("click",function(e){
+  var b = e.target.closest("button[data-view]");
+  if(b) setView(b.dataset.view);
+});
+
+applyView();
+render();
+})();
+</script>
+</body>
+</html>
