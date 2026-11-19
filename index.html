@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#2f7d4f">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="apple-touch-icon" href="favicon.svg">
 <title>作り置き買い物リスト</title>
 <style>
 :root{
@@ -52,6 +55,12 @@ button{min-height:48px;padding:0 18px;border-radius:12px;border:1px solid var(--
 button.danger{border-color:#c0504d;color:#c0504d}
 .empty{color:var(--sub);padding:16px;text-align:center}
 .prog{color:var(--sub);font-size:.85rem}
+.total{background:var(--card);border:2px solid var(--accent);border-radius:12px;padding:10px 14px;margin:8px 0}
+.total .big{font-size:1.5rem;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.total small{display:block;color:var(--sub);font-size:.75rem}
+.sub{color:var(--text);font-weight:600;text-align:right;margin:8px 2px;font-variant-numeric:tabular-nums}
+li .pr{color:var(--text);white-space:nowrap;font-variant-numeric:tabular-nums;min-width:4.5em;text-align:right}
+li.done .pr{text-decoration:line-through;opacity:.5}
 </style>
 </head>
 <body>
@@ -73,8 +82,9 @@ button.danger{border-color:#c0504d;color:#c0504d}
 
   <section id="view-list" hidden>
     <h2>買い物リスト <span class="prog" id="prog"></span></h2>
+    <div id="total"></div>
     <div id="list"></div>
-    <p class="note">価格は表示しません。調味料は家にある分を確認してください。</p>
+    <p class="note">価格はマルキョウ想定の目安です。調味料は家にある分を確認してください。</p>
   </section>
 </main>
 <nav class="tabbar" role="tablist" aria-label="画面切り替え">
@@ -96,8 +106,18 @@ function guardIngredients(list){ return list.filter(function(x){ return isAllowe
 
 /* ---------- データ（1層目：卵・そば・うなぎ無し） ---------- */
 var V="野菜・きのこ", M="肉・魚", B="豆・大豆製品", C="缶詰・乾物", G="穀物", O="その他";
+/* 単価（円／その材料のunitあたり）。マルキョウ想定の目安 */
+var PRICES = {
+ "鶏むね肉":0.75,"鶏ひき肉":1.1,"サバ切り身":150,"鮭切り身":180,"玉ねぎ":60,"にんじん":60,
+ "セロリ":120,"キャベツ":200,"ほうれん草":180,"小松菜":130,"ブロッコリー":180,"ごぼう":90,
+ "しめじ":110,"えのき":90,"にんにく":60,"生姜":100,"ひよこ豆缶":130,"トマト缶":110,
+ "ツナ缶":130,"レンズ豆":1.5,"厚揚げ":110,"大豆水煮":100,"干し椎茸":40,"オートミール":500,
+ "玄米":1800,"冷凍ブルーベリー":450,"ミックスナッツ":700,"豆乳":0.18,"オリーブオイル":2.5,
+ "塩":0.2,"味噌":0.8,"カレー粉":10,"コンソメ":30,"だし":0.5,"醤油":0.7,"みりん":0.8,
+ "ごま油":2.5,"レモン汁":2.5,"白ごま":3
+};
 function I(name,amount,unit,category,isSeasoning){
-  return {name:name,amount:amount,unit:unit,category:category,isSeasoning:!!isSeasoning};
+  return {name:name,amount:amount,unit:unit,category:category,isSeasoning:!!isSeasoning,price:PRICES[name]};
 }
 var RECIPES = [
  {id:"r1",name:"サラダチキン",ingredients:[
@@ -173,7 +193,7 @@ function build(){
   sources.forEach(function(src){
     guardIngredients(src.ingredients).forEach(function(ing){   // 必ずガードを通す
       var k = ing.name+"|"+ing.unit;
-      if(!map[k]){ map[k]={key:k,name:ing.name,unit:ing.unit,amount:0,category:ing.category,isSeasoning:ing.isSeasoning,from:[]}; order.push(k); }
+      if(!map[k]){ map[k]={key:k,name:ing.name,unit:ing.unit,amount:0,category:ing.category,isSeasoning:ing.isSeasoning,price:ing.price,from:[]}; order.push(k); }
       map[k].amount += ing.amount;
       if(map[k].from.indexOf(src.name)<0) map[k].from.push(src.name);
     });
@@ -181,6 +201,8 @@ function build(){
   return guardIngredients(order.map(function(k){return map[k];}));  // 最終出力も再度ガード
 }
 function fmt(n){ return String(Math.round(n*100)/100); }
+function rowPrice(it){ return Math.round(it.amount*(it.price||0)/10 + 1e-9)*10; }   // 10円単位に四捨五入
+function yen(n){ return n.toLocaleString("ja-JP"); }
 
 /* ---------- 描画 ---------- */
 function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
@@ -201,22 +223,27 @@ function itemHtml(it){
   var c = !!state.checked[it.key];
   return '<li class="'+(c?'done':'')+'"><label><input type="checkbox" data-key="'+esc(it.key)+'"'+(c?' checked':'')+
     '><span class="nm">'+esc(it.name)+'<span class="src">'+esc(it.from.join("・"))+'</span></span><span class="amt">'+
-    fmt(it.amount)+esc(it.unit)+'</span></label></li>';
+    fmt(it.amount)+esc(it.unit)+'</span><span class="pr">約'+yen(rowPrice(it))+'円</span></label></li>';
 }
 function renderList(){
   var items = build(), el = document.getElementById("list");
   var prog = document.getElementById("prog");
   document.getElementById("badge").textContent = items.length;
-  if(!items.length){ el.innerHTML='<div class="empty">メニューか定番を選ぶとここに表示されます</div>'; prog.textContent=""; return; }
+  var totalEl = document.getElementById("total");
+  if(!items.length){ totalEl.innerHTML=""; el.innerHTML='<div class="empty">メニューか定番を選ぶとここに表示されます</div>'; prog.textContent=""; return; }
   var done = items.filter(function(i){return state.checked[i.key];}).length;
   prog.textContent = done+" / "+items.length;
+  var sum = function(a){ return a.reduce(function(t,i){return t+rowPrice(i);},0); };
+  totalEl.innerHTML = '<div class="total"><div class="big">合計目安 約'+yen(sum(items.filter(function(i){return !i.isSeasoning;})))+
+    '円</div><small>調味料は含みません</small></div>';
   var html = "";
   CATS.forEach(function(cat){
     var g = items.filter(function(i){return !i.isSeasoning && i.category===cat;});
     if(g.length) html += "<h3>"+esc(cat)+"</h3><ul>"+g.map(itemHtml).join("")+"</ul>";
   });
   var se = items.filter(function(i){return i.isSeasoning;});
-  if(se.length) html += "<h3>"+SEASON_LABEL+"</h3><ul>"+se.map(itemHtml).join("")+"</ul>";
+  if(se.length) html += "<h3>"+SEASON_LABEL+"</h3><ul>"+se.map(itemHtml).join("")+
+    '</ul><div class="sub">調味料を全部買うと約'+yen(sum(se))+'円</div>';
   el.innerHTML = html;
 }
 function render(){ renderPickers(); renderList(); }
