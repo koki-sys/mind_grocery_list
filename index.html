@@ -35,7 +35,8 @@ h2{font-size:1.1rem;margin:24px 0 8px}
 h3{font-size:.95rem;margin:16px 0 6px;color:var(--sub)}
 .grid{display:grid;gap:8px}
 label.card{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 14px;
-  background:var(--card);border:2px solid var(--line);border-radius:12px;cursor:pointer}
+  background:var(--card);border:2px solid var(--line);border-radius:12px;cursor:pointer;transition:transform .08s ease}
+label.card:active{transform:scale(.98)}
 label.card.on{background:var(--sel);border-color:var(--accent)}
 input[type=checkbox]{width:26px;height:26px;flex:none;accent-color:var(--accent);margin:0}
 .t{flex:1}.t small{display:block;color:var(--sub);font-size:.8rem}
@@ -49,6 +50,8 @@ li.done .nm,li.done .amt{text-decoration:line-through;opacity:.5}
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
 button{min-height:48px;padding:0 18px;border-radius:12px;border:1px solid var(--line);
   background:var(--card);color:var(--text);font-size:1rem;cursor:pointer}
+button:active{opacity:.75}
+#confirm:disabled{opacity:.45}
 button.danger{border-color:#c0504d;color:#c0504d}
 .empty{color:var(--sub);padding:16px;text-align:center}
 .prog{color:var(--sub);font-size:.85rem}
@@ -66,7 +69,7 @@ li.done .pr{text-decoration:line-through;opacity:.5}
 .rc ul li:first-child{border-top:0}
 .rc ol{margin:0;padding-left:1.6em}
 .rc ol li{padding:4px 0;line-height:1.6}
-.dish-img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;display:block;margin-bottom:10px}
+.dish-img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;display:block;margin-bottom:10px;background:var(--line)}
 </style>
 </head>
 <body>
@@ -99,6 +102,7 @@ li.done .pr{text-decoration:line-through;opacity:.5}
     <div class="bar"><button type="button" id="backList">買い物リストに戻る</button></div>
     <h2>作り方</h2>
     <div id="recipes"></div>
+    <div class="fixbar"><button type="button" id="backListB">買い物リストに戻る</button></div>
   </section>
 </main>
 <script>
@@ -239,6 +243,7 @@ function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e
 var view = "pick";
 function setView(v){
   view = (v === "list" || v === "recipe") ? v : "pick";
+  if(view === "list") renderList();
   if(view === "recipe") renderRecipes();
   applyView();
   window.scrollTo(0,0);
@@ -265,11 +270,12 @@ function build(){
   return guardIngredients(order.map(function(k){return map[k];}));  // 最終出力も再度ガード
 }
 function fmt(n){ return String(Math.round(n*100)/100); }
-function rowPrice(it){ return Math.round(it.amount*(it.price||0)/10 + 1e-9)*10; }   // 10円単位に四捨五入
+/* 10円単位に四捨五入。1e-9 は浮動小数点誤差で境界値（例: x.5）が切り捨て方向にずれるのを防ぐ補正 */
+function rowPrice(it){ return Math.round(it.amount*(it.price||0)/10 + 1e-9)*10; }
 function yen(n){ return n.toLocaleString("ja-JP"); }
 
 /* ---------- 描画 ---------- */
-function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+function esc(s){ return String(s).replace(/[&<>'"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c];}); }
 
 function renderPickers(){
   document.getElementById("menus").innerHTML = RECIPES.map(function(r){
@@ -313,13 +319,17 @@ function renderRecipes(){
   var sel = RECIPES.filter(function(r){return state.menus.indexOf(r.id)>-1;});
   if(!sel.length){ el.innerHTML = '<div class="empty">メニューを選ぶと作り方が表示されます</div>'; return; }
   el.innerHTML = sel.map(function(r){
-    var img = IMAGES[r.id] ? '<img class="dish-img" src="'+esc(IMAGES[r.id])+'" alt="'+esc(r.name)+'" loading="lazy">' : '';
+    var img = (IMAGES[r.id] && IMAGES[r.id].indexOf("data:image/") === 0) ?'<img class="dish-img" src="'+esc(IMAGES[r.id])+'" alt="'+esc(r.name)+'" loading="lazy">' : '';
     return '<div class="rc">'+img+'<h3>'+esc(r.name)+'</h3><h4>材料</h4><ul>'+
       guardIngredients(r.ingredients).map(function(i){return '<li>'+esc(i.name)+' '+esc(fmt(i.amount)+i.unit)+'</li>';}).join("")+
       '</ul><h4>手順</h4><ol>'+r.steps.map(function(s){return '<li>'+esc(s)+'</li>';}).join("")+'</ol></div>';
   }).join("");
 }
-function render(){ renderPickers(); renderList(); if(view === "recipe") renderRecipes(); }
+function updateConfirm(){
+  var n = state.menus.length + state.staples.length, b = document.getElementById("confirm");
+  if(n === 0){ b.disabled = true; b.textContent = "メニューか定番を選んでください"; }
+  else{ b.disabled = false; b.textContent = "確定して買い物リストを見る（"+n+"件）"; }
+}
 
 /* ---------- イベント ---------- */
 document.addEventListener("change",function(e){
@@ -327,7 +337,10 @@ document.addEventListener("change",function(e){
   if(t.dataset.kind){
     var arr = state[t.dataset.kind], id = t.dataset.id, i = arr.indexOf(id);
     if(t.checked && i<0) arr.push(id); else if(!t.checked && i>-1) arr.splice(i,1);
-    save(); render();
+    save();
+    var card = t.closest("label");
+    if(card) card.classList.toggle("on", t.checked);
+    updateConfirm();
   }else if(t.dataset.key){
     if(t.checked) state.checked[t.dataset.key]=true; else delete state.checked[t.dataset.key];
     save(); renderList();
@@ -337,7 +350,9 @@ document.getElementById("reset").addEventListener("click",function(){
   if(!confirm("選択とチェックをすべてリセットしますか？")) return;
   state = {menus:[],staples:[],checked:{}};
   try{ localStorage.removeItem(KEY); }catch(e){}
-  render();
+  renderPickers(); updateConfirm();
+  if(view === "list") renderList();
+  else if(view === "recipe") renderRecipes();
 });
 
 document.getElementById("confirm").addEventListener("click",function(){ setView("list"); });
@@ -345,8 +360,10 @@ document.getElementById("back").addEventListener("click",function(){ setView("pi
 document.getElementById("toRecipe").addEventListener("click",function(){ setView("recipe"); });
 document.getElementById("backList").addEventListener("click",function(){ setView("list"); });
 
+document.getElementById("backListB").addEventListener("click",function(){ setView("list"); });
+
 applyView();
-render();
+renderPickers(); updateConfirm();
 })();
 </script>
 </body>
