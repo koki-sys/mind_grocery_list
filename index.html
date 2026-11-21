@@ -5,7 +5,8 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#2f7d4f">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#b7e39a">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#3aa76d">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="apple-touch-icon" href="apple-touch-icon-v2.png">
 <title>作り置き買い物リスト</title>
@@ -22,14 +23,14 @@
   --head-shadow:0 1px 2px rgba(0,30,15,.6), 0 2px 8px rgba(0,30,15,.4);
 }
 @media (prefers-color-scheme:dark){
-  :root{--text:#e8eee9;--sub:#b9cdc0;--accent:#4fb87c;
-  --glass:rgba(28,34,30,.55);--glass-border:rgba(255,255,255,.16);
-  --glass-shadow:0 8px 20px rgba(0,0,0,.4);
-  --row:rgba(28,34,30,.45);--row-done:rgba(28,34,30,.28);
-  --btn:rgba(28,34,30,.5);
-  --bar:rgba(10,18,13,.45);--bar-border:rgba(255,255,255,.14);
-  --primary:rgba(38,105,66,.85);
-  --warn:#e8c877;--danger:#e88a86}
+  :root{--text:#e8eee9;--sub:#cfe6d8;--accent:#4fb87c;
+  --glass:rgba(21,74,48,.42);--glass-border:rgba(255,255,255,.28);
+  --glass-shadow:0 8px 20px rgba(6,40,24,.35);
+  --row:rgba(21,74,48,.38);--row-done:rgba(21,74,48,.22);
+  --btn:rgba(21,74,48,.42);
+  --bar:rgba(14,80,50,.45);--bar-border:rgba(255,255,255,.22);
+  --primary:rgba(22,105,62,.88);
+  --warn:#ffd97a;--danger:#e88a86}
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:transparent;color:var(--text);
@@ -63,7 +64,11 @@ label.card{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px
 label.card:active{transform:scale(.98)}
 label.card.on{background:rgba(235,248,239,.78);border:1.5px solid var(--accent);
   box-shadow:0 8px 20px rgba(12,40,25,.15), inset 0 0 0 2px rgba(47,125,79,.25), inset 0 1px 0 rgba(255,255,255,.8)}
-input[type=checkbox]{width:26px;height:26px;flex:none;accent-color:var(--accent);margin:0}
+input[type=checkbox]{-webkit-appearance:none;appearance:none;width:26px;height:26px;flex:none;margin:0;
+  border-radius:50%;border:2px solid #6f9a80;background:rgba(255,255,255,.35);cursor:pointer;
+  background-position:center;background-repeat:no-repeat;background-size:14px 14px}
+input[type=checkbox]:checked{background-color:var(--accent);border-color:var(--accent);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 12.5l5 5L20 6.5' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
 .t{flex:1}.t small{display:block;color:var(--sub);font-size:.8rem}
 ul{list-style:none;margin:0;padding:0;background:none;border:0;overflow:visible}
 li{margin-bottom:6px}
@@ -101,20 +106,23 @@ li.done .pr{text-decoration:line-through;opacity:.5}
 .dish-img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;display:block;margin-bottom:10px;background:rgba(255,255,255,.25);box-shadow:0 10px 24px rgba(18,60,38,.25)}
 @media (prefers-color-scheme:dark){
   body::before{background:
-  radial-gradient(220px 220px at 88% -30px, rgba(255,226,89,.22), rgba(255,226,89,0) 70%),
-  radial-gradient(200px 200px at -80px 65%, rgba(126,232,250,.20), rgba(126,232,250,0) 70%),
-  radial-gradient(150px 150px at 110% 45%, rgba(255,255,255,.10), rgba(255,255,255,0) 70%),
-  linear-gradient(155deg, #12291d, #173d29 45%, #1d4d33 80%, #256344)}
+  radial-gradient(220px 220px at 88% -30px, rgba(255,226,89,.45), rgba(255,226,89,0) 70%),
+  radial-gradient(200px 200px at -80px 65%, rgba(126,232,250,.38), rgba(126,232,250,0) 70%),
+  radial-gradient(150px 150px at 110% 45%, rgba(255,255,255,.20), rgba(255,255,255,0) 70%),
+  linear-gradient(155deg, #3aa76d, #2f9e6e 45%, #279763 80%, #1f8a52)}
   h1{color:#eaf5ee}
-  .note,.total small{color:#c4d8ca}
-  label.card.on{background:rgba(38,74,54,.72);border-color:var(--accent);
-    box-shadow:0 8px 20px rgba(0,0,0,.4), inset 0 0 0 2px rgba(79,184,124,.35)}
+  .note,.total small{color:#eaf5ee;text-shadow:0 1px 3px rgba(6,40,24,.5)}
+  .allergy{text-shadow:0 1px 3px rgba(6,40,24,.5)}
+  label.card.on{background:rgba(88,184,128,.50);border-color:#8fe6b6;
+    box-shadow:0 8px 20px rgba(6,40,24,.35), inset 0 0 0 2px rgba(143,230,182,.45), inset 0 1px 0 rgba(255,255,255,.35)}
   button{color:var(--text);border-color:rgba(255,255,255,.2)}
   .fixbar button{color:#fff;border-color:rgba(255,255,255,.35)}
   button.danger{color:var(--danger);border-color:rgba(160,58,55,.55)}
   .rc ul li{border-top:1px solid rgba(255,255,255,.14)}
   .rc ul li:first-child{border-top:0}
   .dish-img{background:rgba(255,255,255,.1)}
+  input[type=checkbox]{border-color:rgba(255,255,255,.7);background-color:rgba(255,255,255,.15)}
+  input[type=checkbox]:checked{border-color:#4fb87c;background-color:#4fb87c}
 }
 </style>
 </head>
