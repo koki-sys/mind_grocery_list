@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#2f7d4f">
@@ -280,12 +281,12 @@ function esc(s){ return String(s).replace(/[&<>'"]/g,function(c){return {"&":"&a
 function renderPickers(){
   document.getElementById("menus").innerHTML = RECIPES.map(function(r){
     var on = state.menus.indexOf(r.id)>-1;
-    return '<label class="card'+(on?' on':'')+'"><input type="checkbox" data-kind="menus" data-id="'+r.id+'"'+(on?' checked':'')+
+    return '<label class="card'+(on?' on':'')+'"><input type="checkbox" data-kind="menus" data-id="'+esc(r.id)+'"'+(on?' checked':'')+
       '><span class="t">'+esc(r.name)+'<small>約5食分</small></span></label>';
   }).join("");
   document.getElementById("staples").innerHTML = STAPLES.map(function(r){
     var on = state.staples.indexOf(r.id)>-1;
-    return '<label class="card'+(on?' on':'')+'"><input type="checkbox" data-kind="staples" data-id="'+r.id+'"'+(on?' checked':'')+
+    return '<label class="card'+(on?' on':'')+'"><input type="checkbox" data-kind="staples" data-id="'+esc(r.id)+'"'+(on?' checked':'')+
       '><span class="t">'+esc(r.name)+'</span></label>';
   }).join("");
 }
