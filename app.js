@@ -257,4 +257,6 @@ document.getElementById("backListB").addEventListener("click",function(){ setVie
 
 applyView();
 renderPickers(); updateConfirm();
+
+if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(function(){}); }
 })();

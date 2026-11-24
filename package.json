@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "lint": "eslint app.js"
+    "lint": "eslint app.js sw.js"
   },
   "devDependencies": {
     "eslint": "^10.15.0",
