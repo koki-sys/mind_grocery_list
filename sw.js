@@ -1,4 +1,4 @@
-const CACHE_NAME = "mealprep-v1";
+const CACHE_NAME = "mealprep-v2";
 const APP_SHELL = [
   "./",
   "index.html",

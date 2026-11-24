@@ -222,6 +222,9 @@ const updateConfirm = () => {
   const n = state.menus.length + state.staples.length, b = document.getElementById("confirm");
   if(n === 0){ b.disabled = true; b.textContent = "メニューか定番を選んでください"; }
   else{ b.disabled = false; b.textContent = "確定して買い物リストを見る（"+n+"件）"; }
+  const toRecipe = document.getElementById("toRecipe");
+  if(state.menus.length === 0){ toRecipe.disabled = true; toRecipe.textContent = "作り方を見る（メニュー未選択）"; }
+  else{ toRecipe.disabled = false; toRecipe.textContent = "作り方を見る"; }
 };
 
 /* ---------- イベント ---------- */
