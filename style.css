@@ -74,7 +74,7 @@ button{min-height:48px;padding:0 18px;border-radius:14px;border:1px solid rgba(2
   background:var(--btn);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
   box-shadow:0 6px 16px rgba(18,60,38,.15);color:#123524;font-size:1rem;cursor:pointer}
 button:active{opacity:.75}
-#confirm:disabled{opacity:.45}
+.fixbar button:disabled{opacity:.45}
 button.danger{color:var(--danger);border-color:rgba(160,58,55,.55)}
 .empty{color:var(--text);padding:16px;text-align:center}
 .prog{color:#fff;text-shadow:var(--head-shadow);font-size:.85rem}
