@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "lint": "eslint app.js"
+  },
+  "devDependencies": {
+    "eslint": "^10.15.0",
+    "eslint-plugin-es-x": "^10.1.0"
+  }
+}
